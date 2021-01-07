@@ -1,4 +1,7 @@
 from pathlib import Path
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MultiLabelBinarizer
 
 DATA_FILES = Path(__file__).parent / 'data'
 TEST_DATA = DATA_FILES / 'test.txt'
@@ -20,10 +23,13 @@ def load_data_raw(file_path):
 
 
 # create bow features
-def create_bow(sentences):
-    # todo: implement
-    pass
-
+def create_bow(sentences, tfidf=True):
+    pipe_inp = [('bow', CountVectorizer())]
+    if tfidf:
+        pipe_inp.append(('tfidf', TfidfTransformer()))
+    pipe = Pipeline(pipe_inp)
+    bow = pipe.fit_transform(sentences)
+    return bow
 
 if __name__ == '__main__':
 
