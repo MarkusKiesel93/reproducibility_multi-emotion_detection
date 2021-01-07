@@ -23,10 +23,10 @@ def load_data_raw(file_path):
 
 
 # create bow features
-def create_bow(sentences, tfidf=True):
+def create_bow(sentences, tfidf=False, log=False):
     pipe_inp = [('bow', CountVectorizer())]
     if tfidf:
-        pipe_inp.append(('tfidf', TfidfTransformer()))
+        pipe_inp.append(('tfidf', TfidfTransformer(sublinear_tf=log)))
     pipe = Pipeline(pipe_inp)
     bow = pipe.fit_transform(sentences)
     return bow
