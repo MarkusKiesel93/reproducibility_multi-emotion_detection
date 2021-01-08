@@ -10,6 +10,10 @@ jupyterlab = "*"
 numpy = "*"
 pandas = "*"
 scikit-learn = "*"
+scikit-multilearn = "*"
+arff = "*"
+scipy = "*"
+imblearn = "*"
 
 [requires]
 python_version = "3.7"
