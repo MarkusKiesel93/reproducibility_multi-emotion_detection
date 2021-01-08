@@ -1,0 +1,22 @@
+tags: ('Interest',), predicted: ('Interest', 'None')
+tags: ('Love',), predicted: ('None',)
+tags: ('None',), predicted: ('Love', 'None')
+tags: ('Interest', 'Joy'), predicted: ('Joy',)
+tags: ('Interest',), predicted: ('None',)
+tags: ('None',), predicted: ('None',)
+tags: ('Fear', 'Love'), predicted: ()
+tags: ('Joy', 'Love'), predicted: ('None',)
+tags: ('Love',), predicted: ('None',)
+tags: ('Anger', 'Interest'), predicted: ()
+
+Testing different penalties without tf-idf
+Penalty: l1, scores: 0.4166693115781208
+Penalty: l2, scores: 0.42190300701678546
+
+Testing different penalties with tf-idf
+Penalty: l1, scores: 0.42158418699683525
+Penalty: l2, scores: 0.42467848639933914
+
+Testing log and tf-idf
+L1 Log tf-idf, scores: 0.42765088206196455
+L2 Log tf-idf, scores: 0.43215500912693283
