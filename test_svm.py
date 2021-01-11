@@ -5,7 +5,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
-from bow_1 import BOW
+from bow import BOW
 import numpy as np
 
 warnings.filterwarnings("ignore")
