@@ -1,42 +1,18 @@
 import warnings
 from pathlib import Path
-from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.svm import LinearSVC
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
-from bow import load_data_raw, create_bow
+from bow_1 import BOW
 import numpy as np
 
 warnings.filterwarnings("ignore")
 
-
-DATA_FILES = Path(__file__).parent / 'data'
-TEST_DATA = DATA_FILES / 'test.txt'
-TRAIN_DATA = DATA_FILES / 'train.txt'
-
-mlb = MultiLabelBinarizer()
-
-train_data, train_target = load_data_raw(TRAIN_DATA)
-test_data, test_target = load_data_raw(TEST_DATA)
-
-# ndarray to remove deprecation warning
-train_target = np.array(train_target, dtype='object')
-test_target = np.array(test_target, dtype='object')
-
-# merge datasets to get same length BOW vectors
-X = np.concatenate([train_data, test_data], axis=0)
-Y = np.concatenate([train_target, test_target], axis=0)
-
-# training data with tfidf
-X_bow = create_bow(X)
-
-# binarize targets
-Y_bin = mlb.fit_transform(Y)
-
-# train-test-split
-X_train, X_test, y_train, y_test = train_test_split(X_bow, Y_bin, test_size=0.2, random_state=1337)
+# load BOW features
+bow_default = BOW()
+X_train, X_test, y_train, y_test = bow_default.create()
 
 clf_l1 = OneVsRestClassifier(LinearSVC(penalty='l1', dual=False, max_iter=10e3))
 clf_l2 = OneVsRestClassifier(LinearSVC(penalty='l2', random_state=1337, max_iter=10e3))
@@ -45,8 +21,8 @@ clf_l1.fit(X_train, y_train)
 
 # Dry-run, just to test if it works
 test_pred = clf_l1.predict(X_test)
-pred_transform = mlb.inverse_transform(test_pred)
-test_transform = mlb.inverse_transform(y_test)
+pred_transform = bow_default.get_original_labels(test_pred)
+test_transform = bow_default.get_original_labels(y_test)
 
 for (test, pred) in zip(test_transform[:10], pred_transform[:10]):
     print(f'tags: {test}, predicted: {pred}')
@@ -63,8 +39,8 @@ for clf in clfs:
 
 # Testing with tf-idf
 print('\nTesting different penalties with tf-idf')
-X_bow_tf = create_bow(X, tfidf=True)
-X_train, X_test, y_train, y_test = train_test_split(X_bow_tf, Y_bin, test_size=0.2, random_state=1337)
+bow_tf = BOW(tfidf=True)
+X_train, X_test, y_train, y_test = bow_default.create()
 
 for clf in clfs:
     gs = GridSearchCV(clf, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
@@ -74,8 +50,8 @@ for clf in clfs:
 
 # L2 penalty with tf-idf performs better so far
 print('\nTesting log and tf-idf')
-X_log = create_bow(X, tfidf=True, log=True)
-X_train, X_test, y_train, y_test = train_test_split(X_log, Y_bin, test_size=0.2, random_state=1337)
+bow_log = BOW(tfidf=True, log=True)
+X_train, X_test, y_train, y_test = bow_default.create()
 
 # L1 with log tf-idf
 gs = GridSearchCV(clf_l1, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
