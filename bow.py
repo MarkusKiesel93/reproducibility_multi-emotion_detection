@@ -49,6 +49,9 @@ class BOW:
     def get_original_labels(self, y):
         return self.multi_label_binarizer.inverse_transform(y)
 
+    def get_labels(self):
+        return self.multi_label_binarizer.classes_
+
     # load raw data
     def load_data_raw(self, file_path):
         X = []
