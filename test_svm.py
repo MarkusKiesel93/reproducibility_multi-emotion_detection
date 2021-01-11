@@ -32,10 +32,11 @@ parameters = dict(estimator__C=[0.1, 1, 10, 100, 1000])
 
 print('\nTesting different penalties without tf-idf')
 for clf in clfs:
-    gs = GridSearchCV(clf, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
+    gs = GridSearchCV(clf, verbose=3, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
     gs.fit(X_train, y_train)
     scores = gs.best_score_
     print(f'Penalty: {clf.estimator.penalty}, scores: {scores}')
+    print('best params: {}'.format(gs.best_params_))
 
 # Testing with tf-idf
 print('\nTesting different penalties with tf-idf')
@@ -43,10 +44,11 @@ bow_tf = BOW(tfidf=True)
 X_train, X_test, y_train, y_test = bow_default.create()
 
 for clf in clfs:
-    gs = GridSearchCV(clf, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
+    gs = GridSearchCV(clf, verbose=3, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
     gs.fit(X_train, y_train)
     scores = gs.best_score_
     print(f'Penalty: {clf.estimator.penalty}, scores: {scores}')
+    print('best params: {}'.format(gs.best_params_))
 
 # L2 penalty with tf-idf performs better so far
 print('\nTesting log and tf-idf')
@@ -54,14 +56,15 @@ bow_log = BOW(tfidf=True, log=True)
 X_train, X_test, y_train, y_test = bow_default.create()
 
 # L1 with log tf-idf
-gs = GridSearchCV(clf_l1, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
+gs = GridSearchCV(clf_l1, verbose=3, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
 gs.fit(X_train, y_train)
 print('L1 Log tf-idf, scores: {}'.format(gs.best_score_))
+print('best params: {}'.format(gs.best_params_))
 
 # L2 with log tf-idf
-gs = GridSearchCV(clf_l2, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
+gs = GridSearchCV(clf_l2, verbose=3, param_grid=parameters, refit=False, cv=5, scoring='f1_micro')
 gs.fit(X_train, y_train)
 print('L2 Log tf-idf, scores: {}'.format(gs.best_score_))
-
+print('best params: {}'.format(gs.best_params_))
 # Oversampling (might not work)
 # smote = SMOTE()
