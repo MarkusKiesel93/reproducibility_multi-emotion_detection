@@ -5,3 +5,7 @@ __pycache__
 
 # VS Studio
 .vscode
+
+# local development
+Pipfile*
+local/
