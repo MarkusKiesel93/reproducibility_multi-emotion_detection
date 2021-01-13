@@ -54,7 +54,7 @@ def calulate_results(scores, labels):
         rakel_accuracy_mean=('rakel_accuracy', 'mean'),
         rakel_accuracy_var=('rakel_accuracy', 'var'),
     )
-    return grouped
+    return grouped.round(3)
 
 
 # check segnificance
@@ -76,7 +76,7 @@ def calculate_significance(scores, labels):
         result['accuracy'] = welch_accuracy.pvalue
 
         results.append(result)
-    return pd.DataFrame(results, index=labels)
+    return pd.DataFrame(results, index=labels).round(3)
 
 
 if __name__ == '__main__':
