@@ -8,3 +8,12 @@ Proc. 37th European Conference on Information Retrieval (ECIR).
 
 ## Data source
 https://github.com/NLeSC/spudisc-emotion-classification
+
+## How to run
+
+We use Docker to ensure that the experimetns are reproducable.
+Debian Buster with Python Version 3.8.7 is used as the base image.
+
+docker build -t reproducability_multi-emotion_detection:1.0 .
+
+docker run reproducability_multi-emotion_detection:1.0
