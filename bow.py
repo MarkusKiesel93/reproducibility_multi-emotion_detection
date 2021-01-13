@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MultiLabelBinarizer
 
-# todo: stop words 
+# todo: stop words
 # - not clear if used for all as RAKEL uses log tfid
 
 # todo: try other splits
@@ -16,6 +16,7 @@ DATA_FILES = Path(__file__).parent / 'data'
 TEST_DATA = DATA_FILES / 'test.txt'
 TRAIN_DATA = DATA_FILES / 'train.txt'
 
+
 class BOW:
     def __init__(self, stop_words=False, tfidf=False, log=False):
         self.tfidf = tfidf
@@ -25,7 +26,6 @@ class BOW:
         self.count_vectorizer = CountVectorizer(stop_words=sw)
         self.tfid_transformer = TfidfTransformer(sublinear_tf=log)
         self.multi_label_binarizer = MultiLabelBinarizer()
-
 
     def create(self):
         # load raw data
@@ -66,3 +66,18 @@ class BOW:
         X = np.array(X, dtype='object')
         y = np.array(y, dtype='object')
         return X, y
+
+
+# test creating BOW
+if __name__ == '__main__':
+    bow = BOW(
+        stop_words=True,
+        tfidf=True,
+        log=True,
+    )
+    X_train, X_test, y_train, y_test = bow.create()
+
+    print(X_train.shape)
+    print(y_train.shape)
+    print(X_test.shape)
+    print(y_test.shape)
