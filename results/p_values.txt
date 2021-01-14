@@ -1,0 +1,14 @@
+\begin{tabular}{lrr}
+\toprule
+{} &     f1 &  accuracy \\
+\midrule
+Anger    &    NaN &       NaN \\
+Fear     &  0.000 &      0.00 \\
+Interest &  0.052 &      0.06 \\
+Joy      &  0.000 &      0.00 \\
+Love     &  1.000 &      1.00 \\
+None     &  1.000 &      1.00 \\
+Sadness  &    NaN &       NaN \\
+Surprise &  0.000 &      0.00 \\
+\bottomrule
+\end{tabular}
