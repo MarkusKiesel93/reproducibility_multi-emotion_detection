@@ -16,4 +16,4 @@ Debian Buster with Python Version 3.8.7 is used as the base image.
 
 docker build -t reproducability_multi-emotion_detection:1.0 .
 
-docker run reproducability_multi-emotion_detection:1.0
+docker run -v {/absolute/path/to/repository}/results:/code/results/ reproducability_multi-emotion_detection:1.0
