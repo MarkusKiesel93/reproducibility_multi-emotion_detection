@@ -41,17 +41,20 @@ def load_data(file_path):
 
 # extract resulst from all runs
 def calulate_results(scores):
-    grouped = scores.groupby('Emotion').agg(
+    grouped = scores.groupby('Emotion')
+    mean_scores = grouped.agg(
         ovr_f1_mean=('ovr_f1', 'mean'),
-        ovr_f1_var=('ovr_f1', 'var'),
         ovr_accuracy_mean=('ovr_accuracy', 'mean'),
-        ovr_accuracy_var=('ovr_accuracy', 'var'),
         rakel_f1_mean=('rakel_f1', 'mean'),
-        rakel_f1_var=('rakel_f1', 'var'),
         rakel_accuracy_mean=('rakel_accuracy', 'mean'),
+    )
+    var_scores = grouped.agg(
+        ovr_f1_var=('ovr_f1', 'var'),
+        ovr_accuracy_var=('ovr_accuracy', 'var'),
+        rakel_f1_var=('rakel_f1', 'var'),
         rakel_accuracy_var=('rakel_accuracy', 'var'),
     )
-    return grouped
+    return mean_scores, var_scores
 
 
 # check segnificance
@@ -159,7 +162,7 @@ for n in range(10):
 
 # get and extract relevant results
 results = pd.concat(results_all_runs)
-mean_results = calulate_results(results)
+mean_scores, var_scores = calulate_results(results)
 p_values = calculate_significance(results, labels)
 times = pd.DataFrame.from_records(times_all_runs,
                                   columns=['run', 'ovr_sec', 'rakel_sec']
@@ -174,8 +177,10 @@ seeds = pd.DataFrame.from_records(seeds_all_runs,
 
 # save results
 RESULTS_PATH = Path(__file__).parent / 'results'
-mean_results.to_csv(RESULTS_PATH / 'results.csv')
-mean_results.to_latex(RESULTS_PATH / 'results.txt', float_format='%.3f')
+mean_scores.to_csv(RESULTS_PATH / 'mean_scores.csv')
+mean_scores.to_latex(RESULTS_PATH / 'mean_scores.txt', float_format='%.3f')
+var_scores.to_csv(RESULTS_PATH / 'var_scores.csv')
+var_scores.to_latex(RESULTS_PATH / 'var_scores.txt', float_format='%.3f')
 p_values.to_csv(RESULTS_PATH / 'p_values.csv')
 p_values.to_latex(RESULTS_PATH / 'p_values.txt', float_format='%.3f')
 times.to_csv(RESULTS_PATH / 'times.csv', index=False)
