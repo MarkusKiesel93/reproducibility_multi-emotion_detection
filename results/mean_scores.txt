@@ -1,0 +1,16 @@
+\begin{tabular}{lrrrr}
+\toprule
+{} &  ovr\_f1\_mean &  ovr\_accuracy\_mean &  rakel\_f1\_mean &  rakel\_accuracy\_mean \\
+Emotion  &              &                    &                &                      \\
+\midrule
+Anger    &        0.000 &              0.000 &          0.000 &                0.000 \\
+Fear     &        0.308 &              0.182 &          0.114 &                0.064 \\
+Interest &        0.077 &              0.040 &          0.048 &                0.025 \\
+Joy      &        0.500 &              0.333 &          0.345 &                0.210 \\
+Love     &        0.545 &              0.375 &          0.596 &                0.425 \\
+None     &        0.412 &              0.259 &          0.510 &                0.344 \\
+Sadness  &        0.000 &              0.000 &          0.000 &                0.000 \\
+Surprise &        0.211 &              0.118 &          0.161 &                0.089 \\
+Overall  &        0.257 &              0.163 &          0.222 &                0.145 \\
+\bottomrule
+\end{tabular}
