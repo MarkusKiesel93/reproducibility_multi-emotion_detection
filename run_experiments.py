@@ -48,12 +48,14 @@ def calulate_results(scores):
         rakel_f1_mean=('rakel_f1', 'mean'),
         rakel_accuracy_mean=('rakel_accuracy', 'mean'),
     )
+    mean_scores = mean_scores.append(mean_scores.mean().rename('Overall'))
     var_scores = grouped.agg(
         ovr_f1_var=('ovr_f1', 'var'),
         ovr_accuracy_var=('ovr_accuracy', 'var'),
         rakel_f1_var=('rakel_f1', 'var'),
         rakel_accuracy_var=('rakel_accuracy', 'var'),
     )
+    var_scores = var_scores.append(var_scores.mean().rename('Overall'))
     return mean_scores, var_scores
 
 
