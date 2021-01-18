@@ -15,6 +15,9 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from skmultilearn.ensemble import RakelD
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # todo: VisibleDeprecationWarning
 # skmultilearn/cluster/random.py:129: VisibleDeprecationWarning:
 # Creating an ndarray from ragged nested sequences
@@ -113,35 +116,38 @@ for n in range(10):
         ('count_vectorizer', CountVectorizer()),  # todo: check if vocabulary needed or not
         ('tf', TfidfTransformer()),
         # todo: oversampling
-        ('ovr', OneVsRestClassifier(
-            LinearSVC(dual=False,
-                      max_iter=10e3,
-                      random_state=local_seed)
-            )
+        ('svc', LinearSVC(dual=False,
+                          max_iter=10e4,
+                          random_state=local_seed)
          ),
     ])
     ovr_grid = {
-        'tf__use_idf': [True, False],
-        'tf__sublinear_tf': [True, False],
-        'ovr__estimator__C': [0.1, 1, 10, 100, 1000],
-        'ovr__estimator__penalty': ['l1', 'l2'],
+        'estimator__tf__use_idf': [True, False],
+        'estimator__tf__sublinear_tf': [True, False],
         # todo: oversampling the minority class or not
+        'estimator__svc__C': [0.1, 1, 10, 100, 1000],
+        'estimator__svc__penalty': ['l1', 'l2'],
     }
 
+    ovr = OneVsRestClassifier(ovr_pipeline)
+
     ovr_start_time = time.time()
-    
+
     # todo: optimize per label
     # for label in labels:
-    ovr_grid_search = GridSearchCV(ovr_pipeline,
+    ovr_grid_search = GridSearchCV(ovr,
                                    param_grid=ovr_grid,
+                                   # todo: change to scorer that optimizes current label
                                    scoring=make_scorer(f1_score, average='micro'),
                                    refit=True,
                                    n_jobs=-1)
+
     ovr_grid_search.fit(X_train, y_train)
-    
+    # todo: get best params
+
     # todo: use best model per label for final prediction
     ovr_prediction = ovr_grid_search.predict(X_test)
-    
+
     ovr_stop_time = time.time()
     ovr_f1 = f1_score(y_test, ovr_prediction, average=None)
     ovr_accuracy = jaccard_score(y_test, ovr_prediction, average=None)
