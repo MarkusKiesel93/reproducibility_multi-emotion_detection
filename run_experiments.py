@@ -7,10 +7,11 @@ import pandas as pd
 
 from scipy.stats import ttest_ind
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.metrics import f1_score, jaccard_score
+from sklearn.metrics import f1_score, jaccard_score, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.svm import LinearSVC
+from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from skmultilearn.ensemble import RakelD
 
@@ -110,20 +111,33 @@ for n in range(10):
     # todo: Grid search per label
     ovr_pipeline = Pipeline([
         ('count_vectorizer', CountVectorizer()),  # todo: check if vocabulary needed or not
-        ('tf-idf', TfidfTransformer()),
-        # todo: optional oversampling
+        ('tf', TfidfTransformer()),
+        # todo: oversampling
         ('ovr', OneVsRestClassifier(
-            LinearSVC(penalty='l1',
-                      dual=False,
+            LinearSVC(dual=False,
                       max_iter=10e3,
                       random_state=local_seed)
             )
          ),
     ])
 
+    ovr_grid = {
+        'tf__use_idf': [True, False],
+        'tf__sublinear_tf': [True, False],
+        'ovr__estimator__C': [0.1, 1, 10, 100, 1000],
+        'ovr__estimator__penalty': ['l1', 'l2'],
+        # todo: oversampling the minority class or not
+    }
+
     ovr_start_time = time.time()
-    ovr_pipeline.fit(X_train, y_train)
-    ovr_prediction = ovr_pipeline.predict(X_test)
+    ovr_grid_search = GridSearchCV(ovr_pipeline,
+                                   param_grid=ovr_grid,
+                                   scoring=make_scorer(f1_score, average='micro'),
+                                   refit=True,
+                                   n_jobs=-1)
+    ovr_grid_search.fit(X_train, y_train)
+    print(ovr_grid_search.best_params_)
+    ovr_prediction = ovr_grid_search.predict(X_test)
     ovr_stop_time = time.time()
     ovr_f1 = f1_score(y_test, ovr_prediction, average=None)
     ovr_accuracy = jaccard_score(y_test, ovr_prediction, average=None)
