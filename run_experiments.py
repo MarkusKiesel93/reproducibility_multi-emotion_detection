@@ -120,7 +120,6 @@ for n in range(10):
             )
          ),
     ])
-
     ovr_grid = {
         'tf__use_idf': [True, False],
         'tf__sublinear_tf': [True, False],
@@ -130,14 +129,19 @@ for n in range(10):
     }
 
     ovr_start_time = time.time()
+    
+    # todo: optimize per label
+    # for label in labels:
     ovr_grid_search = GridSearchCV(ovr_pipeline,
                                    param_grid=ovr_grid,
                                    scoring=make_scorer(f1_score, average='micro'),
                                    refit=True,
                                    n_jobs=-1)
     ovr_grid_search.fit(X_train, y_train)
-    print(ovr_grid_search.best_params_)
+    
+    # todo: use best model per label for final prediction
     ovr_prediction = ovr_grid_search.predict(X_test)
+    
     ovr_stop_time = time.time()
     ovr_f1 = f1_score(y_test, ovr_prediction, average=None)
     ovr_accuracy = jaccard_score(y_test, ovr_prediction, average=None)
