@@ -1,0 +1,9 @@
+Emotion,svc__C,svc__class_weight,svc__penalty,tf__sublinear_tf,tf__use_idf
+Anger,1.0,balanced,l1,True,False
+Fear,10.0,balanced,l1,True,False
+Interest,0.1,balanced,l1,True,False
+Joy,1000.0,balanced,l1,True,False
+Love,0.1,balanced,l2,True,False
+None,1.0,balanced,l1,True,False
+Sadness,1000.0,,l1,True,True
+Surprise,1.0,balanced,l1,False,False
