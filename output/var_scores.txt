@@ -1,0 +1,16 @@
+\begin{tabular}{lrrrr}
+\toprule
+{} &  ovr\_f1\_var &  ovr\_accuracy\_var &  rakel\_f1\_var &  rakel\_accuracy\_var \\
+Emotion  &             &                   &               &                     \\
+\midrule
+Anger    &       0.000 &             0.000 &         0.000 &               0.000 \\
+Fear     &       0.000 &             0.000 &         0.005 &               0.002 \\
+Interest &       0.000 &             0.000 &         0.006 &               0.002 \\
+Joy      &       0.000 &             0.000 &         0.002 &               0.001 \\
+Love     &       0.000 &             0.000 &         0.001 &               0.001 \\
+None     &       0.000 &             0.000 &         0.001 &               0.001 \\
+Sadness  &       0.000 &             0.000 &         0.000 &               0.000 \\
+Surprise &       0.000 &             0.000 &         0.005 &               0.002 \\
+Overall  &       0.000 &             0.000 &         0.002 &               0.001 \\
+\bottomrule
+\end{tabular}
