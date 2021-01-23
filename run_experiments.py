@@ -12,7 +12,7 @@ from sklearn.metrics import f1_score, jaccard_score, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.svm import LinearSVC
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.multiclass import OneVsRestClassifier
 from skmultilearn.ensemble import RakelD
 from sklearn.exceptions import ConvergenceWarning
@@ -85,12 +85,6 @@ def calculate_significance(scores, labels):
     return pd.DataFrame(results, index=labels)
 
 
-# custom scorer
-def score_by_label(y, y_pred, label):
-    scores = f1_score(y, y_pred, average=None)
-    return scores[label]
-
-
 # initial seed
 SEED = 23249425
 random.seed(SEED)
@@ -122,36 +116,33 @@ ovr_best_params = {}
 # find best hyperparams for OvR by label (extimator)
 for idx in range(len(labels)):
     ovr_grid = {
-        'estimator__tf__use_idf': [True, False],
-        'estimator__tf__sublinear_tf': [True, False],
-        'estimator__svc__C': [0.1, 1, 10, 100, 1000],
-        'estimator__svc__penalty': ['l1', 'l2'],
-        'estimator__svc__class_weight': [None, 'balanced'],
+        'tf__use_idf': [True, False],
+        'tf__sublinear_tf': [True, False],
+        'svc__C': [0.1, 1, 10, 100, 1000],
+        'svc__penalty': ['l1', 'l2'],
+        'svc__class_weight': [None, 'balanced'],
     }
-    ovr = OneVsRestClassifier(ovr_pipeline)
-    ovr_grid_search = GridSearchCV(ovr,
+    ovr_grid_search = GridSearchCV(ovr_pipeline,
                                    param_grid=ovr_grid,
-                                   scoring=make_scorer(score_by_label, label=idx),
+                                   scoring=make_scorer(f1_score),
                                    refit=True,
+                                   cv=StratifiedKFold(n_splits=5),
                                    n_jobs=-1)
-    ovr_grid_search.fit(X_train, y_train)
+
+    y = [label[idx] for label in y_train]
+    ovr_grid_search.fit(X_train, y)
+    print(ovr_grid_search.best_params_)
     ovr_best_params[labels[idx]] = ovr_grid_search.best_params_
 
 # Benchmark
 results_all_runs = []
 times_all_runs = []
 for run, seed in local_seeds.items():
-    print('Creating OvR Classifier with best parameters')
+
     ovr = OneVsRestClassifier(ovr_pipeline)
     ovr.estimators_ = [copy.deepcopy(ovr_pipeline) for i in range(len(labels))]
     for idx in range(len(labels)):
-        params = ovr_best_params[labels[idx]]
-        ovr.estimators_[idx].set_params(svc__C=params['estimator__svc__C'],
-                                        svc__penalty=params['estimator__svc__penalty'],
-                                        svc__class_weight=params['estimator__svc__class_weight'],
-                                        tf__sublinear_tf=params['estimator__tf__sublinear_tf'],
-                                        tf__use_idf=params['estimator__tf__use_idf'],
-                                        svc__random_state=seed)
+        ovr.estimators_[idx].set_params(**ovr_best_params[labels[idx]])
 
     ovr_start_time = time.time()
     ovr.fit(X_train, y_train)
@@ -198,12 +189,15 @@ for run, seed in local_seeds.items():
 results = pd.concat(results_all_runs)
 mean_scores, var_scores = calulate_results(results)
 p_values = calculate_significance(results, labels)
+ovr_best_params = pd.DataFrame.from_dict(ovr_best_params, orient='index')
 times = pd.DataFrame.from_records(times_all_runs,
                                   columns=['run', 'ovr_sec', 'rakel_sec']
                                   ).round(3)
 seeds = pd.DataFrame.from_dict(local_seeds,
                                orient='index',
                                columns=['seed'])
+
+print(mean_scores)
 
 # save results
 OUTPUT_PATH = Path(__file__).parent / 'output'
@@ -213,6 +207,8 @@ var_scores.to_csv(OUTPUT_PATH / 'var_scores.csv')
 var_scores.to_latex(OUTPUT_PATH / 'var_scores.txt', float_format='%.3f')
 p_values.to_csv(OUTPUT_PATH / 'p_values.csv')
 p_values.to_latex(OUTPUT_PATH / 'p_values.txt', float_format='%.3f')
+ovr_best_params.to_csv(OUTPUT_PATH / 'ovr_best_params.csv', index_label='Emotion')
+ovr_best_params.to_latex(OUTPUT_PATH / 'ovr_best_params.txt')
 times.to_csv(OUTPUT_PATH / 'times.csv', index=False)
 times.to_latex(OUTPUT_PATH / 'times.txt', index=False, float_format='%.3f')
 seeds.to_csv(OUTPUT_PATH / 'seeds.csv', index_label='run')
