@@ -1,6 +1,7 @@
 import random
 from pathlib import Path
 import time
+import copy
 
 import numpy as np
 import pandas as pd
@@ -14,10 +15,14 @@ from sklearn.svm import LinearSVC
 from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from skmultilearn.ensemble import RakelD
+from sklearn.exceptions import ConvergenceWarning
 
 import warnings
-warnings.filterwarnings("ignore")
-
+import sys
+import os
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
+    os.environ["PYTHONWARNINGS"] = "ignore"
 # todo: VisibleDeprecationWarning
 # skmultilearn/cluster/random.py:129: VisibleDeprecationWarning:
 # Creating an ndarray from ragged nested sequences
@@ -84,6 +89,9 @@ def calculate_significance(scores, labels):
         results.append(result)
     return pd.DataFrame(results, index=labels)
 
+# custom scorer
+def my_scorer(y, y_pred, label=None):
+    return f1_score(y[:,label], y_pred[:,label], average='micro')
 
 # initial seed
 SEED = 23249425
@@ -105,6 +113,8 @@ seeds_all_runs = []
 results_all_runs = []
 times_all_runs = []
 
+model_params = {}
+
 for n in range(10):
     # randomize Models
     local_seed = random.randint(1, 2**32 - 1)
@@ -118,7 +128,8 @@ for n in range(10):
         # todo: oversampling
         ('svc', LinearSVC(dual=False,
                           max_iter=10e4,
-                          random_state=local_seed)
+                          random_state=local_seed,
+                          class_weight='balanced')
          ),
     ])
     ovr_grid = {
@@ -130,27 +141,37 @@ for n in range(10):
     }
 
     ovr = OneVsRestClassifier(ovr_pipeline)
+    ovr.estimators_ = [copy.deepcopy(ovr_pipeline) for i in range(len(labels))]
 
     ovr_start_time = time.time()
 
     # todo: optimize per label
-    # for label in labels:
-    ovr_grid_search = GridSearchCV(ovr,
-                                   param_grid=ovr_grid,
-                                   # todo: change to scorer that optimizes current label
-                                   scoring=make_scorer(f1_score, average='micro'),
-                                   refit=True,
-                                   n_jobs=-1)
-
-    ovr_grid_search.fit(X_train, y_train)
+    for idx in range(len(labels)):
+        ovr_grid_search = GridSearchCV(ovr,
+                                       param_grid=ovr_grid,
+                                       # todo: change to scorer that optimizes current label
+                                       scoring=make_scorer(my_scorer, label=idx),
+                                       refit=True,
+                                       n_jobs=-1)
+        ovr_grid_search.fit(X_train, y_train)
+        model_params[str(idx)] = {'score': 0, 'params': None}
+        model_params[str(idx)]['score'] = ovr_grid_search.best_score_
+        model_params[str(idx)]['params'] = ovr_grid_search.best_params_
     # todo: get best params
-
+    print('Creating OvR Classifier with best parameters')
+    for idx in range(len(labels)):
+        params = model_params[str(idx)]['params']
+        ovr.estimators_[idx].set_params(svc__C=params['estimator__svc__C'],
+                                        svc__penalty=params['estimator__svc__penalty'],
+                                        tf__sublinear_tf=params['estimator__tf__sublinear_tf'],
+                                        tf__use_idf=params['estimator__tf__use_idf'])
     # todo: use best model per label for final prediction
-    ovr_prediction = ovr_grid_search.predict(X_test)
+    ovr.fit(X_train, y_train)
+    ovr_prediction = ovr.predict(X_test)
 
     ovr_stop_time = time.time()
-    ovr_f1 = f1_score(y_test, ovr_prediction, average=None)
-    ovr_accuracy = jaccard_score(y_test, ovr_prediction, average=None)
+    ovr_f1 = f1_score(y_test, ovr_prediction, average='micro')
+    ovr_accuracy = jaccard_score(y_test, ovr_prediction, average='micro')
 
     # RAKEL Classifyer
     rakel_pipeline = Pipeline([
