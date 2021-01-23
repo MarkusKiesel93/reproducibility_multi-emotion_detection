@@ -118,7 +118,6 @@ ovr_pipeline = Pipeline([
      ),
 ])
 
-ovr_grid_start_time = time.time()
 ovr_best_params = {}
 # find best hyperparams for OvR by label (extimator)
 for idx in range(len(labels)):
@@ -137,8 +136,6 @@ for idx in range(len(labels)):
                                    n_jobs=-1)
     ovr_grid_search.fit(X_train, y_train)
     ovr_best_params[labels[idx]] = ovr_grid_search.best_params_
-ovr_grid_end_time = time.time()
-# todo: capture time
 
 # Benchmark
 results_all_runs = []
@@ -170,7 +167,7 @@ for run, seed in local_seeds.items():
         ('tf-idf_log', TfidfTransformer(sublinear_tf=True)),
         ('rakel', RakelD(
             base_classifier=LinearSVC(C=1, random_state=seed, class_weight='balanced'),
-            base_classifier_require_dense=[True, True],  # todo: change to False to test spares data
+            base_classifier_require_dense=[True, True],
             labelset_size=3
             )
          )
