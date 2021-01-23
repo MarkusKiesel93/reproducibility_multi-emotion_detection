@@ -3,12 +3,11 @@
 {} &    f1 &  accuracy \\
 \midrule
 Anger    &   NaN &       NaN \\
-Fear     & 1.000 &     1.000 \\
+Fear     & 0.903 &     0.909 \\
 Interest & 1.000 &     1.000 \\
-Joy      & 0.931 &     0.938 \\
-Love     & 0.018 &     0.019 \\
-None     & 1.000 &     1.000 \\
-Sadness  &   NaN &       NaN \\
+Joy      & 0.979 &     0.982 \\
+Love     & 0.571 &     0.595 \\
+Sadness  & 0.916 &     0.916 \\
 Surprise & 1.000 &     1.000 \\
 \bottomrule
 \end{tabular}

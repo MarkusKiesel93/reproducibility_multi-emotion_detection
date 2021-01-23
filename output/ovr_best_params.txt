@@ -2,13 +2,12 @@
 \toprule
 {} &  svc\_\_C & svc\_\_class\_weight & svc\_\_penalty &  tf\_\_sublinear\_tf &  tf\_\_use\_idf \\
 \midrule
-Anger    &     1.0 &          balanced &           l1 &              True &        False \\
-Fear     &    10.0 &          balanced &           l1 &              True &        False \\
-Interest &     0.1 &          balanced &           l1 &              True &        False \\
-Joy      &  1000.0 &          balanced &           l1 &              True &        False \\
-Love     &     0.1 &          balanced &           l2 &              True &        False \\
-None     &     1.0 &          balanced &           l1 &              True &        False \\
-Sadness  &  1000.0 &              None &           l1 &              True &         True \\
+Anger    &     1.0 &          balanced &           l1 &              True &         True \\
+Fear     &     0.1 &          balanced &           l2 &             False &        False \\
+Interest &     0.1 &          balanced &           l2 &              True &         True \\
+Joy      &   100.0 &          balanced &           l1 &             False &         True \\
+Love     &     0.1 &          balanced &           l2 &              True &         True \\
+Sadness  &     0.1 &          balanced &           l2 &             False &        False \\
 Surprise &     1.0 &          balanced &           l1 &             False &        False \\
 \bottomrule
 \end{tabular}
