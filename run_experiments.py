@@ -1,11 +1,9 @@
+import numpy as np
+import pandas as pd
 import random
 from pathlib import Path
 import time
 import copy
-
-import numpy as np
-import pandas as pd
-
 from scipy.stats import ttest_ind
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import f1_score, jaccard_score, make_scorer
@@ -15,11 +13,10 @@ from sklearn.svm import LinearSVC
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.multiclass import OneVsRestClassifier
 from skmultilearn.ensemble import RakelD
-from sklearn.exceptions import ConvergenceWarning
-
 import warnings
 import sys
 import os
+
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
     os.environ["PYTHONWARNINGS"] = "ignore"
@@ -36,7 +33,11 @@ def load_data(file_path):
     for line in lines:
         sentence = ' '.join(line.split()[0:-1])
         X.append(sentence)
-        labels = line.split()[-1].split('_')
+        labels = line.split()[-1]
+        if labels != 'None':
+            labels = labels.split('_')
+        else:
+            labels = []
         y.append(labels)
     X = np.array(X, dtype='object')
     y = np.array(y, dtype='object')
@@ -104,7 +105,7 @@ labels = multi_label_binarizer.classes_
 
 # One-vs-Rest Classifyer
 ovr_pipeline = Pipeline([
-    ('count_vectorizer', CountVectorizer(stop_words='english')),
+    ('count_vectorizer', CountVectorizer()),
     ('tf', TfidfTransformer()),
     ('svc', LinearSVC(dual=False,
                       max_iter=10e4,
@@ -142,7 +143,8 @@ for run, seed in local_seeds.items():
     ovr = OneVsRestClassifier(ovr_pipeline)
     ovr.estimators_ = [copy.deepcopy(ovr_pipeline) for i in range(len(labels))]
     for idx in range(len(labels)):
-        ovr.estimators_[idx].set_params(**ovr_best_params[labels[idx]])
+        ovr.estimators_[idx].set_params(**ovr_best_params[labels[idx]],
+                                        svc__random_state=seed)
 
     ovr_start_time = time.time()
     ovr.fit(X_train, y_train)
@@ -154,7 +156,7 @@ for run, seed in local_seeds.items():
 
     # RAKEL Classifyer
     rakel_pipeline = Pipeline([
-        ('count_vectorizer', CountVectorizer(stop_words='english')),
+        ('count_vectorizer', CountVectorizer()),
         ('tf-idf_log', TfidfTransformer(sublinear_tf=True)),
         ('rakel', RakelD(
             base_classifier=LinearSVC(C=1, random_state=seed, class_weight='balanced'),
