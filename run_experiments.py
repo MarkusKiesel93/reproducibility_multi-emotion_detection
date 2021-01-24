@@ -17,34 +17,145 @@ import warnings
 import sys
 import os
 
+
+# ignore warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
     os.environ["PYTHONWARNINGS"] = "ignore"
 
-# todo: comment and describe code better
+
+# find best hyperparams for One-vs-Rest model by underlying estimator
+# one estimator is built by label (class)
+def ovr_hyperparameter_optimization(X, y, labels, seed):
+    best_params = {}
+
+    pipeline = Pipeline([
+        ('count_vectorizer', CountVectorizer()),
+        ('tf', TfidfTransformer()),
+        ('svc', LinearSVC(dual=False,
+                          max_iter=10e4,
+                          random_state=seed)
+         ),
+    ])
+
+    for idx in range(len(labels)):
+        grid = {
+            'tf__use_idf': [True, False],
+            'tf__sublinear_tf': [True, False],
+            'svc__C': [0.1, 1, 10, 100, 1000],
+            'svc__penalty': ['l1', 'l2'],
+            'svc__class_weight': [None, 'balanced'],
+        }
+        grid_search = GridSearchCV(
+            pipeline,
+            param_grid=grid,
+            scoring=make_scorer(f1_score),
+            refit=True,
+            cv=StratifiedKFold(n_splits=5),
+            n_jobs=-1)
+
+        # extract current label at index
+        y_current_label = [label[idx] for label in y]
+        grid_search.fit(X, y_current_label)
+        best_params[labels[idx]] = grid_search.best_params_
+
+    return best_params
 
 
-# load raw data
+# One-vs-Rest model: training, predicition and extracting of scores
+def ovr_model(X_train, X_test, y_train, y_test, labels, seed, params=None):
+    # set parameters for pipeline for each estimator of the OvR model
+    if params is not None:
+        pipeline = Pipeline([
+            ('count_vectorizer', CountVectorizer()),
+            ('tf', TfidfTransformer()),
+            ('svc', LinearSVC(
+                dual=False,
+                max_iter=10e4,
+                random_state=seed)
+             ),
+        ])
+        ovr = OneVsRestClassifier(pipeline)
+        ovr.estimators_ = [copy.deepcopy(pipeline) for i in range(len(labels))]
+        for idx in range(len(labels)):
+            ovr.estimators_[idx].set_params(**params[labels[idx]])
+    # use simpler model where each estimator of the OvR model is equal
+    else:
+        pipeline = Pipeline([
+            ('count_vectorizer', CountVectorizer()),
+            ('tf', TfidfTransformer(sublinear_tf=True)),
+            ('svc', LinearSVC(
+                C=0.1,
+                penalty='l1',
+                class_weight='balanced',
+                dual=False,
+                max_iter=10e4,
+                random_state=seed)
+             ),
+        ])
+        ovr = OneVsRestClassifier(pipeline)
+    # train and predict model
+    start_time = time.time()
+    ovr.fit(X_train, y_train)
+    prediction = ovr.predict(X_test)
+    stop_time = time.time()
+    # calculate scores
+    f1 = f1_score(y_test, prediction, average=None)
+    accuracy = jaccard_score(y_test, prediction, average=None)
+
+    return f1, accuracy, stop_time - start_time
+
+
+# RAKEL model: training, predicition and extracting of scores
+def rakel_model(X_train, X_test, y_train, y_test, labels, seed):
+    rakel = Pipeline([
+        ('count_vectorizer', CountVectorizer()),
+        ('tf-idf_log', TfidfTransformer(sublinear_tf=True)),
+        ('rakel', RakelD(
+            base_classifier=LinearSVC(C=1,
+                                      class_weight='balanced',
+                                      random_state=seed),
+            base_classifier_require_dense=[True, True],
+            labelset_size=3
+            )
+         )
+    ])
+    # train and predict model
+    start_time = time.time()
+    rakel.fit(X_train, y_train)
+    prediction = rakel.predict(X_test)
+    stop_time = time.time()
+    # calculate scores
+    f1 = f1_score(y_test, prediction, average=None)
+    accuracy = jaccard_score(y_test, prediction, average=None)
+
+    return f1, accuracy, stop_time - start_time
+
+
+# load raw data from text files
 def load_data(file_path):
     X = []
     y = []
     with open(file_path, 'r') as file:
         lines = file.readlines()
     for line in lines:
+        # sentence is everything except the last word
         sentence = ' '.join(line.split()[0:-1])
-        X.append(sentence)
+        # labels are the last word on each line in form "label1_label2_..."
         labels = line.split()[-1]
+        # add empty lists for None labels
         if labels != 'None':
             labels = labels.split('_')
         else:
             labels = []
+        X.append(sentence)
         y.append(labels)
     X = np.array(X, dtype='object')
     y = np.array(y, dtype='object')
     return X, y
 
 
-# extract resulst from all runs
+# calculate mean scores and variances over all runs
 def calulate_results(scores):
     grouped = scores.groupby('Emotion')
     mean_scores = grouped.agg(
@@ -64,7 +175,7 @@ def calulate_results(scores):
     return mean_scores, var_scores
 
 
-# check segnificance
+# calculate significance levels using Welch's one-sided t-test
 def calculate_significance(scores, labels):
     results = []
     for label in labels:
@@ -86,132 +197,84 @@ def calculate_significance(scores, labels):
     return pd.DataFrame(results, index=labels)
 
 
-# initial seed
-SEED = 23249425
-random.seed(SEED)
-# set 10 seeds for randomization of models
-local_seeds = {run: random.randint(1, 2**32 - 1) for run in range(10)}
+if __name__ == '__main__':
+    # if True: simple model has given equal parameters for all OvR estimators
+    # if False: grid search used to find best parameters per estimator
+    simple_model = False
 
-# load data
-DATA_PATH = Path(__file__).parent / 'data'
-X_train, train_labels = load_data(DATA_PATH / 'train.txt')
-X_test, test_labels = load_data(DATA_PATH / 'test.txt')
+    # load data
+    DATA_PATH = Path(__file__).parent / 'data'
+    X_train, train_labels = load_data(DATA_PATH / 'train.txt')
+    X_test, test_labels = load_data(DATA_PATH / 'test.txt')
 
-# binarize target labels
-multi_label_binarizer = MultiLabelBinarizer()
-y_train = multi_label_binarizer.fit_transform(train_labels)
-y_test = multi_label_binarizer.transform(test_labels)
-labels = multi_label_binarizer.classes_
+    # binarize target labels
+    multi_label_binarizer = MultiLabelBinarizer()
+    y_train = multi_label_binarizer.fit_transform(train_labels)
+    y_test = multi_label_binarizer.transform(test_labels)
+    labels = multi_label_binarizer.classes_
 
-# One-vs-Rest Classifyer
-ovr_pipeline = Pipeline([
-    ('count_vectorizer', CountVectorizer()),
-    ('tf', TfidfTransformer()),
-    ('svc', LinearSVC(dual=False,
-                      max_iter=10e4,
-                      random_state=SEED)
-     ),
-])
+    # set initial seed
+    SEED = 23249425
+    random.seed(SEED)
+    # set 10 seeds for randomization of models
+    local_seeds = {run: random.randint(1, 2**32 - 1) for run in range(10)}
 
-ovr_best_params = {}
-# find best hyperparams for OvR by label (extimator)
-for idx in range(len(labels)):
-    ovr_grid = {
-        'tf__use_idf': [True, False],
-        'tf__sublinear_tf': [True, False],
-        'svc__C': [0.1, 1, 10, 100, 1000],
-        'svc__penalty': ['l1', 'l2'],
-        'svc__class_weight': [None, 'balanced'],
-    }
-    ovr_grid_search = GridSearchCV(ovr_pipeline,
-                                   param_grid=ovr_grid,
-                                   scoring=make_scorer(f1_score),
-                                   refit=True,
-                                   cv=StratifiedKFold(n_splits=5),
-                                   n_jobs=-1)
+    # get best parameters for OvR Model
+    ovr_best_params = None
+    if not simple_model:
+        ovr_best_params = ovr_hyperparameter_optimization(X_train, y_train, labels, SEED)
 
-    y = [label[idx] for label in y_train]
-    ovr_grid_search.fit(X_train, y)
-    print(ovr_grid_search.best_params_)
-    ovr_best_params[labels[idx]] = ovr_grid_search.best_params_
+    # Benchmark
+    scores_all_runs = []
+    times_all_runs = []
+    for run, seed in local_seeds.items():
+        # build OvR model
+        ovr_f1, ovr_accuracy, ovr_time = ovr_model(
+            X_train, X_test, y_train, y_test, labels, seed,
+            params=ovr_best_params)
+        # build RAKEL model
+        rakel_f1, rakel_accuracy, rakel_time = rakel_model(
+            X_train, X_test, y_train, y_test, labels, seed)
+        # capture scores in DataFrame
+        scores_run = pd.DataFrame({
+            'Emotion': labels,
+            'run': run + 1,
+            'ovr_f1': ovr_f1,
+            'ovr_accuracy': ovr_accuracy,
+            'rakel_f1': rakel_f1,
+            'rakel_accuracy': rakel_accuracy,
+        })
+        scores_all_runs.append(scores_run)
+        # capture times
+        times_all_runs.append((run + 1, ovr_time, rakel_time))
 
-# Benchmark
-results_all_runs = []
-times_all_runs = []
-for run, seed in local_seeds.items():
+    # extract relevant outputs
+    scores = pd.concat(scores_all_runs)
+    mean_scores, var_scores = calulate_results(scores)
+    p_values = calculate_significance(scores, labels)
+    times = pd.DataFrame.from_records(
+        times_all_runs,
+        columns=['run', 'ovr_sec', 'rakel_sec']
+        ).round(3)
+    seeds = pd.DataFrame.from_dict(
+        local_seeds,
+        orient='index',
+        columns=['seed'])
+    if not simple_model:
+        ovr_best_params = pd.DataFrame.from_dict(ovr_best_params, orient='index')
 
-    ovr = OneVsRestClassifier(ovr_pipeline)
-    ovr.estimators_ = [copy.deepcopy(ovr_pipeline) for i in range(len(labels))]
-    for idx in range(len(labels)):
-        ovr.estimators_[idx].set_params(**ovr_best_params[labels[idx]],
-                                        svc__random_state=seed)
-
-    ovr_start_time = time.time()
-    ovr.fit(X_train, y_train)
-    ovr_prediction = ovr.predict(X_test)
-    ovr_stop_time = time.time()
-
-    ovr_f1 = f1_score(y_test, ovr_prediction, average=None)
-    ovr_accuracy = jaccard_score(y_test, ovr_prediction, average=None)
-
-    # RAKEL Classifyer
-    rakel_pipeline = Pipeline([
-        ('count_vectorizer', CountVectorizer()),
-        ('tf-idf_log', TfidfTransformer(sublinear_tf=True)),
-        ('rakel', RakelD(
-            base_classifier=LinearSVC(C=1, random_state=seed, class_weight='balanced'),
-            base_classifier_require_dense=[True, True],
-            labelset_size=3
-            )
-         )
-    ])
-
-    rakel_start_time = time.time()
-    rakel_pipeline.fit(X_train, y_train)
-    rakel_prediction = rakel_pipeline.predict(X_test)
-    rakel_stop_time = time.time()
-    rakel_f1 = f1_score(y_test, rakel_prediction, average=None)
-    rakel_accuracy = jaccard_score(y_test, rakel_prediction, average=None)
-
-    # capture results in DataFrame
-    result_run = pd.DataFrame({
-        'Emotion': labels,
-        'run': run,
-        'ovr_f1': ovr_f1,
-        'ovr_accuracy': ovr_accuracy,
-        'rakel_f1': rakel_f1,
-        'rakel_accuracy': rakel_accuracy,
-    })
-    results_all_runs.append(result_run)
-
-    # capture times
-    times_all_runs.append((run + 1, ovr_stop_time - ovr_start_time, rakel_stop_time - rakel_start_time))
-
-# get and extract relevant outputs
-results = pd.concat(results_all_runs)
-mean_scores, var_scores = calulate_results(results)
-p_values = calculate_significance(results, labels)
-ovr_best_params = pd.DataFrame.from_dict(ovr_best_params, orient='index')
-times = pd.DataFrame.from_records(times_all_runs,
-                                  columns=['run', 'ovr_sec', 'rakel_sec']
-                                  ).round(3)
-seeds = pd.DataFrame.from_dict(local_seeds,
-                               orient='index',
-                               columns=['seed'])
-
-print(mean_scores)
-
-# save results
-OUTPUT_PATH = Path(__file__).parent / 'output'
-mean_scores.to_csv(OUTPUT_PATH / 'mean_scores.csv')
-mean_scores.to_latex(OUTPUT_PATH / 'mean_scores.txt', float_format='%.3f')
-var_scores.to_csv(OUTPUT_PATH / 'var_scores.csv')
-var_scores.to_latex(OUTPUT_PATH / 'var_scores.txt', float_format='%.3f')
-p_values.to_csv(OUTPUT_PATH / 'p_values.csv')
-p_values.to_latex(OUTPUT_PATH / 'p_values.txt', float_format='%.3f')
-ovr_best_params.to_csv(OUTPUT_PATH / 'ovr_best_params.csv', index_label='Emotion')
-ovr_best_params.to_latex(OUTPUT_PATH / 'ovr_best_params.txt')
-times.to_csv(OUTPUT_PATH / 'times.csv', index=False)
-times.to_latex(OUTPUT_PATH / 'times.txt', index=False, float_format='%.3f')
-seeds.to_csv(OUTPUT_PATH / 'seeds.csv', index_label='run')
-seeds.to_latex(OUTPUT_PATH / 'seeds.txt', index=False)
+    # write outputs to CSV and Latex files
+    OUTPUT_PATH = Path(__file__).parent / 'output'
+    mean_scores.to_csv(OUTPUT_PATH / 'mean_scores.csv')
+    mean_scores.to_latex(OUTPUT_PATH / 'mean_scores.txt', float_format='%.3f')
+    var_scores.to_csv(OUTPUT_PATH / 'var_scores.csv')
+    var_scores.to_latex(OUTPUT_PATH / 'var_scores.txt', float_format='%.3f')
+    p_values.to_csv(OUTPUT_PATH / 'p_values.csv')
+    p_values.to_latex(OUTPUT_PATH / 'p_values.txt', float_format='%.3f')
+    times.to_csv(OUTPUT_PATH / 'times.csv', index=False)
+    times.to_latex(OUTPUT_PATH / 'times.txt', index=False, float_format='%.3f')
+    seeds.to_csv(OUTPUT_PATH / 'seeds.csv', index_label='run')
+    seeds.to_latex(OUTPUT_PATH / 'seeds.txt', index=False)
+    if not simple_model:
+        ovr_best_params.to_csv(OUTPUT_PATH / 'ovr_best_params.csv', index_label='Emotion')
+        ovr_best_params.to_latex(OUTPUT_PATH / 'ovr_best_params.txt')
