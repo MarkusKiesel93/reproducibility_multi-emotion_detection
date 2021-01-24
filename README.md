@@ -15,6 +15,10 @@ docker build -t reproducability_multi-emotion_detection:1.0 .
 
 docker run -v {/absolute/path/to/repository}/output:/code/output/ reproducability_multi-emotion_detection:1.0
 
+## Report
+
+The report belonging to this reproducability study can be found at <https://zenodo.org/record/4459925>
+
 
 ## Original Paper and Data source
 L. Buitinck, J. van Amerongen, E. Tan and M. de Rijke (2015).
